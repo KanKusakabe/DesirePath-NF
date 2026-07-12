@@ -1,0 +1,78 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DesirePath-NF — 歩行動線から「望まれた道」を読む</title><style>
+body{font:16px/1.75 -apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;max-width:980px;margin:0 auto;padding:2rem 1rem;color:#222}
+h1{line-height:1.35;margin:.2rem 0}.sub{color:#666}a{color:#c2410c}
+.crumb{font-size:.9rem;margin-bottom:1rem}
+.lead{background:#f7f5f2;border-radius:12px;padding:1rem 1.2rem}
+.kpis{display:flex;gap:1rem;flex-wrap:wrap;margin:1.2rem 0}
+.kpi{background:#f5f3f0;border-radius:12px;padding:.7rem 1rem;min-width:130px}.kpi b{display:block;font-size:1.5rem;color:#c2410c}
+table{border-collapse:collapse;width:100%;margin:1rem 0}th,td{border:1px solid #e5e5e5;padding:.45rem .6rem;text-align:center}
+th{background:#faf8f5}
+section{margin:2.2rem 0}h2{border-left:5px solid #d97757;padding-left:.6rem}
+img{width:100%;border:1px solid #e5e5e5;border-radius:10px}
+figure{margin:0}figcaption{color:#555;margin-top:.3rem;font-size:.92rem}
+.interp{background:#faf8f5;border-left:3px solid #d97757;padding:.6rem .9rem;border-radius:0 8px 8px 0}
+code{background:#f0eee9;padding:.1rem .3rem;border-radius:4px}
+.pass{color:#2a7d2a;font-weight:700}.warn{color:#b8860b;font-weight:700}
+</style></head><body>
+<div class="crumb"><a href="https://kankusakabe.github.io/KAN-NF/">&larr; KAN-NF 統括へ</a></div>
+<h1>DesirePath-NF — 歩行動線から「望まれた道」を読む</h1>
+<p class="sub">屋外の自由歩行（ETH/UCY）の一歩 <code>p(d_forward, d_lateral | 文脈)</code> を条件付き
+Normalizing Flow で学習。<b>正確な尤度</b>で、混雑コリドー・迷いの場所・「まっすぐ目的地」からの系統的なズレ＝
+<b>けもの道(desire path)の芽</b>を数値化する。KAN-NF 空間動線シリーズの第1弾。</p>
+
+<div class="kpis">
+ <div class="kpi"><b>0.85</b>NF held-out NLL<br><span class="sub">位置無し0.97 / 直進3.50 / ガウス3.08</span></div>
+ <div class="kpi"><b>5</b>シーン LOSO<br><span class="sub">ETH/UCY・約3.9万ステップ</span></div>
+ <div class="kpi"><b>0.70</b>rad ≈ 40°<br><span class="sub">desire と直進の平均偏差</span></div>
+ <div class="kpi"><b>&minus;2.4</b>nats<br><span class="sub">直進基線に対する尤度改善(平均)</span></div>
+</div>
+
+<p class="lead"><b>芯となる問い</b>：人の動線は「与えられた構造(舗装・障害物・出入口)」に従いつつ、
+<b>“本当はこう歩きたい”という望まれた構造</b>を漏らす。条件付き Flow の尤度は、その
+<b>desire(実際の流れ) と provided(まっすぐ目的地への測地線) の差</b>を測る物差しになる。
+このズレが大きい場所こそ、環境が流れを曲げている＝<b>けもの道の候補</b>。</p>
+
+<p><b>データ</b>：ETH/UCY 歩行者軌跡5シーン(<code>seq_eth, seq_hotel, zara01, zara02, students03</code>、
+<a href="https://github.com/crowdbotp/OpenTraj">OpenTraj</a> 経由の <code>obsmat</code>)。各歩行者の平面座標 <code>(x,y)</code> を
+自己中心の一歩増分 <code>(d_forward, d_lateral)</code> に整形。<b>正直な範囲</b>：ETH/UCY には舗装マップの正解が無いため、
+provided は「目的地への直進」で代用し、desire path は<b>測地線からの系統的偏差の代理</b>として示す（実舗装との照合は SDD 等が要る）。</p>
+
+<p><b>モデル</b>：<code>(d_forward, d_lateral)</code> の zuko 条件付き Neural Spline Flow。文脈は
+直近8ステップの増分を要約する GRU ＋ <code>(正規化位置・目的地方位の sin/cos・残距離・シーン埋め込み)</code> の MLP。
+motionsim / MERL-NF と同じ実装様式。</p>
+
+<h2>結果（Leave-One-Scene-Out）</h2>
+<table>
+<tr><th>モデル</th><th>held-out NLL<br>(nats/step, 小さいほど良い)</th><th>意味</th></tr>
+<tr><td><b>NF（位置条件つき）</b></td><td><b>0.85</b> <span class="pass">✓ 最良</span></td><td>位置＝コリドー構造を使うと最も当たる</td></tr>
+<tr><td>NF（位置ブラインド）</td><td>0.97</td><td>位置を隠すと悪化＝<b>構造が効いている証拠</b></td></tr>
+<tr><td>直進ガウス(測地線)</td><td>3.50</td><td>「まっすぐ目的地」だけでは説明できない</td></tr>
+<tr><td>無条件ガウス</td><td>3.08</td><td>素朴基線</td></tr>
+</table>
+<p class="interp"><b>読み</b>：位置を条件に入れた NF が全基線を大きく上回り、位置を隠すと悪化する。
+これは「歩行の一歩が、その場の空間構造に依存して曲がる」＝環境が流れを形作っていることを示す。
+直進基線との差(平均 &minus;2.4 nats)が、まさに <b>desire ≠ provided</b> の大きさ。
+<span class="warn">正直な例外</span>：小シーン <code>hotel</code> だけは位置ブラインドが勝った(0.77 vs 2.14)。
+学習4シーンと配置が大きく異なり位置条件が過適合した1件で、シーン数が少ない LOSO の限界も示す。</p>
+
+<section><h2>読み出し（students03）</h2>
+<figure><img src="figures/readouts.png" alt="flow / surprise / deviation">
+<figcaption><b>左</b>：観測された歩行フロー（コリドーが見える）。
+<b>中</b>：サプライズ地図 <code>&minus;log p</code>＝一歩が読みにくい場所（分岐・コリドー外＝迷いの場所）。
+<b>右</b>：desire と「直進目的地」の偏差 <code>|desire &minus; geodesic|</code>。青が小・黄が大で、
+環境が流れを曲げている領域＝<b>けもの道が生まれうる場所</b>を指す。</figcaption></figure></section>
+
+<section><h2>指標</h2>
+<img src="figures/metrics.png" alt="NLL比較" style="max-width:560px;display:block;margin:0 auto">
+<p class="interp">5シーンを1つずつ held-out にした平均 NLL。位置条件つき NF＜位置ブラインド＜直進＜ガウス。
+未知シーンへ汎化した状態でも構造条件が効く。</p></section>
+
+<section><h2>この先（逆設計）</h2>
+<p>学習後の使い方は3つ：<b>①サプライズ地図</b>（迷い・混雑の骨格）、<b>②what-if</b>（配置を変えて流れを再生成）、
+<b>③逆設計</b>（偏差が最小になる歩道＝“けもの道の舗装案”を逆算）。本実験は①と③の芽（偏差場）まで。
+実舗装マップの正解を持つ俯瞰データ(SDD 等)に載せ替えれば、②③を「園路ネットワークの引き直し」として完成できる。</p>
+<p class="sub">データ: ETH/UCY (OpenTraj)。コード: <code>uv run python run_all.py</code>（抽出→LOSO→読み出し→図/metrics を再生成）。
+KAN-NF 実験群の一部（<a href="https://kankusakabe.github.io/KAN-NF/">統括</a>）。</p></section>
+</body></html>

@@ -1,0 +1,6 @@
+[project]
+name = "desirepath-nf"
+version = "0.1.0"
+description = "Conditional Normalizing Flow on ETH/UCY pedestrian flow: desire-path deviation, surprise map, LOSO evaluation (KAN-NF)"
+requires-python = ">=3.11"
+dependencies = ["torch","zuko","numpy","matplotlib","scikit-learn"]
