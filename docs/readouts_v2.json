@@ -1,0 +1,18 @@
+{
+  "headline": {
+    "scene": "hyang",
+    "video": "video0",
+    "n_tracks": 152,
+    "off_pavement_rate": 0.06441650121332451,
+    "median_detour_ratio": 1.0147616143716527,
+    "frac_beat_paved": 0.064,
+    "paving_capture_proposed": 0.5742009132420092,
+    "paving_capture_naive": 0.03333333333333334
+  },
+  "off_pavement_rate_by_scene": {
+    "hyang": 0.058688941495546966,
+    "little": 0.02085610259586403,
+    "quad": 0.0,
+    "gates": 0.029396801707308247
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "loso": [
+    {
+      "scene": "hyang",
+      "n_test": 81717,
+      "terrain": 0.41848239067512055,
+      "blind": 0.34796280681584385,
+      "abspos": 0.5490723903587897,
+      "terrain_shuffled": 0.28292829472773245,
+      "geodesic": 5.529043674468994,
+      "gauss": 4.945642471313477
+    },
+    {
+      "scene": "little",
+      "n_test": 9400,
+      "terrain": 0.586975195052776,
+      "blind": 0.5578080911839262,
+      "abspos": 0.7131304671916556,
+      "terrain_shuffled": 0.5707987618953624,
+      "geodesic": 5.218073844909668,
+      "gauss": 4.799247741699219
+    },
+    {
+      "scene": "quad",
+      "n_test": 803,
+      "terrain": 1.0856234311760586,
+      "blind": 0.5375061795245369,
+      "abspos": 0.7619336271939212,
+      "terrain_shuffled": 1.0779509395917652,
+      "geodesic": 8.673707008361816,
+      "gauss": 7.657926559448242
+    },
+    {
+      "scene": "gates",
+      "n_test": 17281,
+      "terrain": 0.026937629991532146,
+      "blind": -0.11725549216099646,
+      "abspos": 0.7633614896327614,
+      "terrain_shuffled": 0.5417025521786482,
+      "geodesic": 5.401288032531738,
+      "gauss": 4.976572036743164
+    }
+  ],
+  "loso_mean": {
+    "terrain": 0.5295046617238718,
+    "blind": 0.33150539634082765,
+    "abspos": 0.6968744935942821,
+    "terrain_shuffled": 0.618345137098377,
+    "geodesic": 6.205528140068054,
+    "gauss": 5.594847202301025
+  },
+  "cap": 12000,
+  "epochs": 25,
+  "scenes": [
+    "hyang",
+    "little",
+    "quad",
+    "gates"
+  ],
+  "gate_terrain_beats_blind_all": false,
+  "gate_terrain_beats_blind_by_scene": {
+    "hyang": false,
+    "little": false,
+    "quad": false,
+    "gates": false
+  },
+  "abspos_collapse_by_scene": {
+    "hyang": true,
+    "little": true,
+    "quad": true,
+    "gates": true
+  }
+}

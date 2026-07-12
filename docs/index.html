@@ -69,10 +69,49 @@ motionsim / MERL-NF と同じ実装様式。</p>
 <p class="interp">5シーンを1つずつ held-out にした平均 NLL。位置条件つき NF＜位置ブラインド＜直進＜ガウス。
 未知シーンへ汎化した状態でも構造条件が効く。</p></section>
 
-<section><h2>この先（逆設計）</h2>
-<p>学習後の使い方は3つ：<b>①サプライズ地図</b>（迷い・混雑の骨格）、<b>②what-if</b>（配置を変えて流れを再生成）、
-<b>③逆設計</b>（偏差が最小になる歩道＝“けもの道の舗装案”を逆算）。本実験は①と③の芽（偏差場）まで。
-実舗装マップの正解を持つ俯瞰データ(SDD 等)に載せ替えれば、②③を「園路ネットワークの引き直し」として完成できる。</p>
-<p class="sub">データ: ETH/UCY (OpenTraj)。コード: <code>uv run python run_all.py</code>（抽出→LOSO→読み出し→図/metrics を再生成）。
+<section><h2>v2（SDD・実舗装マップ）— 転移検定と、けもの道の逆設計</h2>
+<p>v1 は ETH/UCY で舗装マップの正解が無く、provided を「目的地への直進」で代用していた（弱点①）。また絶対位置を丸暗記して未知シーンで崩れた（弱点②）。
+v2 は<b>俯瞰＋歩ける面の正解を持つ Stanford Drone Dataset（4シーン hyang/little/quad/gates）</b>に載せ替え、
+入力を<b>絶対位置 → 進行方向で整列した局所地形パッチ</b>（舗装/障害物/距離場の 3ch CNN）に変えて、
+「地形を条件にすると未知シーンへ<b>転移</b>するか」を Leave-One-Scene-Out で直接検定した。
+歩ける面マスクは reference.jpg から<b>色＋テクスチャで自動生成</b>（手アノテほぼ不要／ped-on-walkable 87–100% で軌跡と整合）。</p>
+
+<h3>結果1：転移検定は「局所地形は次の動きの予測を改善しない」— 正直な負の結果</h3>
+<table>
+<tr><th>held-out シーン</th><th>terrain<br>(局所地形)</th><th>blind<br>(目的地+履歴+群集)</th><th>abspos<br>(v1・絶対位置)</th><th>terrain-shuffled<br>(地形の中身を破壊)</th></tr>
+<tr><td>hyang</td><td>0.42</td><td><b>0.35</b></td><td>0.55</td><td>0.28</td></tr>
+<tr><td>little</td><td>0.59</td><td><b>0.56</b></td><td>0.71</td><td>0.57</td></tr>
+<tr><td>quad</td><td>1.09</td><td><b>0.54</b></td><td>0.76</td><td>1.08</td></tr>
+<tr><td>gates</td><td>0.03</td><td><b>&minus;0.12</b></td><td>0.76</td><td>0.54</td></tr>
+<tr><td><b>平均</b></td><td>0.53</td><td><b>0.33</b></td><td>0.70</td><td>0.62</td></tr>
+</table>
+<p class="interp"><b>読み</b>（held-out NLL, 小さいほど良い。8歩先到達位置ターゲット）：
+<b>局所地形(terrain)は blind に 0/4折 で勝てず</b>、地形パッチの中身を壊した対照(terrain-shuffled)ともほぼ同じ＝
+<b>地形の情報は使われていない</b>（次の一歩でも同じ結論。図 <code>metrics_v2.png</code>）。
+一方 <span class="warn">abspos（v1式の絶対位置）は一貫して最悪</span>で、<b>絶対位置は未知シーンへ転移しない</b>という v1 弱点②は再確認された。
+最も転移するのは<b>目的地志向の運動そのもの</b>（blind）。これは Layout-NF の教訓＝「運動フローはレイアウトに鈍感」の屋外での再現で、
+"けもの道"は<b>次の動きの予測</b>としては現れない。<b>負の結果として正直に記録する。</b></p>
+<img src="figures/metrics_v2.png" alt="v2 transfer NLL" style="max-width:820px;display:block;margin:.5rem auto">
+
+<h3>結果2：それでも「けもの道」は実在する — 記述的な逆設計成果物</h3>
+<p>予測モデルの勝敗とは独立に、<b>実軌跡 × 実舗装マスク</b>から「人が系統的に舗装を外れて芝を突っ切る場所」を直接可視化できる。これが desire path の本体。</p>
+<figure><img src="figures/desirepath.png" alt="desire-path map, grass-cutting, paving proposal">
+<figcaption><b>左</b>：オフ舗装（芝上）訪問のヒートマップ＝<b>けもの道</b>。直交する舗装路の間を<b>斜めに突っ切る回廊</b>が明瞭。
+<b>中</b>：歩ける面（灰=舗装/緑=芝）と芝を横切る歩数（赤）。<b>右</b>：オフ舗装交通量を最も拾う芝セルを貪欲に選んだ<b>舗装提案</b>。</figcaption></figure>
+<p class="interp"><b>読み</b>（hyang）：歩行ステップの <b>約6%が舗装外（芝）</b>で、<b>6%の歩行者は舗装ネットワークの最短路より短く</b>芝を突っ切って目的地に達する（実経路/舗装内最短 中央値1.01）。
+提案した40セルの舗装は<b>オフ舗装交通の57%を捕捉</b>（同数のセルをランダムに置く素朴案は3%）＝<b>「引き直すべき園路」を交通量から逆算</b>できる。
+シーン別のオフ舗装率：hyang 5.9% / gates 2.9% / little 2.1% / quad 0.0%（全面舗装の広場で芝の近道が起きない、という地形と整合）。</p>
+<p class="sub">コード: <code>desirepath/{prep_sdd,data_v2,pipeline_v2,readouts_v2}.py</code>, <code>run_all_v2.py</code>。
+データ: SDD（歩行者軌跡＋自動生成の歩ける面マスク）。指標: <code>metrics_v2.json</code> / <code>readouts_v2.json</code>。</p>
+</section>
+
+<section><h2>まとめ・この先</h2>
+<p>3つの使い方＝<b>①サプライズ地図 ②what-if ③逆設計</b>のうち、v2 は SDD の実舗装マップ上で<b>③逆設計（舗装提案）を記述的に達成</b>した。
+一方で「局所地形を条件にすれば<b>予測</b>が未知シーンへ転移する」という仮説は<b>成立しなかった（正直な負の結果）</b>——
+運動予測としてのけもの道は現れず、最も転移するのは目的地志向の運動だった。
+けもの道は<b>予測</b>ではなく<b>記述</b>（実軌跡の系統的オフ舗装偏差）として捉えるのが正しい、というのが v2 の学び。</p>
+<p>次の攻め筋は Layout-NF で唯一効いた定式化＝<b>静的占有 <code>p(訪問位置 | 地形)</code></b>（運動を捨て「どこに居るか」を地形で条件化）。②what-if（舗装を変えて流れを再生成）はその上に載る。</p>
+<p class="sub">v1 データ: ETH/UCY (OpenTraj)、<code>uv run python run_all.py</code>。
+v2 データ: SDD（<code>flclain/StanfordDroneDataset</code>）、<code>uv run python -m desirepath.prep_sdd</code> → <code>run_all_v2.py</code> → <code>python -m desirepath.readouts_v2</code>。
 KAN-NF 実験群の一部（<a href="https://kankusakabe.github.io/KAN-NF/">統括</a>）。</p></section>
 </body></html>

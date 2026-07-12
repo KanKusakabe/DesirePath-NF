@@ -1,4 +1,6 @@
 __pycache__/
 *.pyc
 .venv/
-run.log
+*.log
+# v2 processed SDD data (regenerate: python -m desirepath.prep_sdd; data_v2)
+data/sdd/
